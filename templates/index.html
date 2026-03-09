@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Knowledge Helper</title>
+  <meta name="description"
+    content="Transform any PDF into a complete learning suite with AI-powered summaries, quizzes, flashcards, audio, and animated video." />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <!-- Material Symbols -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+    rel="stylesheet" />
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+
+<body>
+
+  <!-- ══════════════════════════════════════════
+     API KEY MODAL
+══════════════════════════════════════════ -->
+  <div id="apiKeyModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-logo"><span class="material-symbols-outlined">key</span></div>
+      <h2>Enter Gemini API Key</h2>
+      <p>Your key is stored only in your browser session and never saved permanently.</p>
+      <input id="apiKeyInput" type="password" placeholder="AIza..." autocomplete="off" />
+      <button id="saveApiKeyBtn" class="btn-primary">Save & Continue</button>
+      <a href="https://aistudio.google.com/app/apikey" target="_blank" class="modal-link">Get a free API key →</a>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     UPLOAD MODAL
+══════════════════════════════════════════ -->
+  <div id="uploadModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <button class="modal-close-btn" id="closeUploadModal"><span
+          class="material-symbols-outlined">close</span></button>
+      <div class="drop-zone" id="dropZone">
+        <span class="material-symbols-outlined drop-icon">upload_file</span>
+        <p class="drop-title">Drop your PDF here</p>
+        <p class="drop-sub">or click to browse</p>
+        <input type="file" id="fileInput" accept=".pdf" hidden />
+      </div>
+      <div id="uploadProgress" class="upload-progress" style="display:none;">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <p id="uploadStatus">Extracting text…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     PROCESSING OVERLAY
+══════════════════════════════════════════ -->
+  <div id="processingOverlay" class="processing-overlay" style="display:none;">
+    <div class="processing-box">
+      <div class="spinner"></div>
+      <p id="processingMsg">Analyzing with Gemini AI…</p>
+      <p class="processing-sub">This may take 15–30 seconds</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     APP SHELL
+══════════════════════════════════════════ -->
+  <div class="app-shell">
+
+    <!-- ── Left Sidebar ── -->
+    <aside class="sidebar">
+      <!-- Branding -->
+      <div class="sidebar-header">
+        <div class="logo-mark"><span class="material-symbols-outlined">auto_awesome</span></div>
+        <h1 class="brand-name">AI Knowledge<br />Helper</h1>
+      </div>
+
+      <!-- Add Source Button -->
+      <button class="btn-upload" id="openUploadBtn">
+        <span class="material-symbols-outlined">add_circle</span>
+        Add PDF Source
+      </button>
+
+      <!-- Sources List -->
+      <div class="sources-section">
+        <p class="section-label">Your Sources</p>
+        <div id="sourcesList">
+          <div class="source-item source-active">
+            <span class="material-symbols-outlined">folder_open</span>
+            <span class="source-name">No source loaded</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Profile -->
+      <div class="sidebar-footer">
+        <div class="profile-row">
+          <div class="avatar">AI</div>
+          <div class="profile-info">
+            <p class="profile-name">Knowledge Seeker</p>
+            <p class="profile-plan">Gemini Pro</p>
+          </div>
+          <button class="icon-btn" id="settingsBtn" title="API Key Settings">
+            <span class="material-symbols-outlined">settings</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Main Workspace ── -->
+    <main class="workspace">
+
+      <!-- Header / Tabs -->
+      <header class="workspace-header">
+        <nav class="tab-nav" id="tabNav">
+          <button class="tab-btn active" data-tab="summary">
+            <span class="material-symbols-outlined">summarize</span> Summary
+          </button>
+          <button class="tab-btn" data-tab="quiz">
+            <span class="material-symbols-outlined">quiz</span> Quiz
+          </button>
+          <button class="tab-btn" data-tab="flashcards">
+            <span class="material-symbols-outlined">style</span> Flashcards
+          </button>
+          <button class="tab-btn" data-tab="audio">
+            <span class="material-symbols-outlined">headphones</span> Audio
+          </button>
+          <button class="tab-btn" data-tab="video">
+            <span class="material-symbols-outlined">smart_display</span> Video
+          </button>
+        </nav>
+        <div class="header-actions">
+          <span class="ai-badge" id="aiBadge">Waiting for PDF…</span>
+        </div>
+      </header>
+
+      <!-- Tab Content -->
+      <div class="workspace-content" id="workspaceContent">
+
+        <!-- ── WELCOME STATE ── -->
+        <div id="welcomeState" class="welcome-state">
+          <div class="welcome-glow"></div>
+          <span class="material-symbols-outlined welcome-icon">auto_stories</span>
+          <h2>Transform Any PDF into a Learning Suite</h2>
+          <p>Upload a PDF and Gemini AI will generate a summary, quiz, flashcards, audio narration, and an animated
+            video — all in seconds.</p>
+          <button class="btn-primary btn-large" id="welcomeUploadBtn">
+            <span class="material-symbols-outlined">upload_file</span>
+            Upload a PDF to Get Started
+          </button>
+          <div class="feature-pills">
+            <span class="pill"><span class="material-symbols-outlined">summarize</span>Summary</span>
+            <span class="pill"><span class="material-symbols-outlined">quiz</span>Quiz</span>
+            <span class="pill"><span class="material-symbols-outlined">style</span>Flashcards</span>
+            <span class="pill"><span class="material-symbols-outlined">headphones</span>Audio</span>
+            <span class="pill"><span class="material-symbols-outlined">smart_display</span>Video</span>
+          </div>
+        </div>
+
+        <!-- ── SUMMARY TAB ── -->
+        <div id="tab-summary" class="tab-panel" style="display:none;">
+          <div class="content-grid">
+            <!-- Summary Card -->
+            <div class="glass-card full-width">
+              <div class="card-header">
+                <span class="material-symbols-outlined card-icon" style="color:var(--accent-pink)">auto_awesome</span>
+                <div>
+                  <h2 id="summaryTitle" class="card-title">Document Summary</h2>
+                  <div id="subjectTags" class="tag-row"></div>
+                </div>
+              </div>
+              <p id="summaryText" class="summary-text"></p>
+            </div>
+
+            <!-- Key Concepts -->
+            <div class="glass-card full-width">
+              <h3 class="section-title"><span class="material-symbols-outlined">lightbulb</span> Key Concepts</h3>
+              <div id="conceptsGrid" class="concepts-grid"></div>
+            </div>
+
+            <!-- Manim Snippet (STEM only) -->
+            <div id="manimSection" class="glass-card full-width" style="display:none;">
+              <h3 class="section-title"><span class="material-symbols-outlined">code</span> Manim Animation Snippet
+                (STEM)</h3>
+              <p class="section-sub">Gemini generated this Manim code to animate the key formulas found in your
+                document.</p>
+              <pre id="manimCode" class="code-block"></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── QUIZ TAB ── -->
+        <div id="tab-quiz" class="tab-panel" style="display:none;">
+          <div class="content-grid">
+            <div class="glass-card full-width">
+              <h3 class="section-title"><span class="material-symbols-outlined">quiz</span> Practice Quiz — 5 Questions
+              </h3>
+              <p class="section-sub">Select an answer and click "Check" to reveal if you're correct.</p>
+              <div id="quizContainer" class="quiz-container"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── FLASHCARDS TAB ── -->
+        <div id="tab-flashcards" class="tab-panel" style="display:none;">
+          <div class="flashcard-header">
+            <h3 class="section-title"><span class="material-symbols-outlined">style</span> Flashcards</h3>
+            <p class="section-sub">Click a card to flip it and reveal the definition.</p>
+          </div>
+          <div id="flashcardsGrid" class="flashcards-grid"></div>
+        </div>
+
+        <!-- ── AUDIO TAB ── -->
+        <div id="tab-audio" class="tab-panel" style="display:none;">
+          <div class="content-grid">
+            <div class="glass-card full-width audio-card">
+              <div class="audio-hero">
+                <div class="audio-icon-wrap">
+                  <span class="material-symbols-outlined">record_voice_over</span>
+                </div>
+                <div class="audio-info">
+                  <h3>AI Voice Summary</h3>
+                  <p>Generated with Google Text-to-Speech</p>
+                </div>
+              </div>
+              <div id="audioPlayerWrap" style="display:none;">
+                <audio id="audioPlayer" controls class="audio-player"></audio>
+                <div class="waveform" id="waveformViz">
+                  <!-- Animated bars injected by JS -->
+                </div>
+              </div>
+              <button id="generateAudioBtn" class="btn-primary">
+                <span class="material-symbols-outlined">play_circle</span>
+                Generate Audio Summary
+              </button>
+              <div id="audioLoading" class="loading-inline" style="display:none;">
+                <div class="spinner-sm"></div><span>Generating speech…</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── VIDEO TAB ── -->
+        <div id="tab-video" class="tab-panel" style="display:none;">
+          <div class="content-grid">
+            <div class="glass-card full-width video-card">
+              <div class="video-hero">
+                <span class="material-symbols-outlined">smart_display</span>
+                <div>
+                  <h3>Animated Knowledge Video</h3>
+                  <p>A subject-aware animated MP4 created from your document's key concepts</p>
+                </div>
+              </div>
+              <div id="videoPlayerWrap" style="display:none; margin-bottom: 20px;">
+                <video id="videoPlayer" controls class="video-player"></video>
+                <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+                  <a id="downloadVideoBtn" href="#" download="summary_video.mp4" class="btn-primary"
+                    style="background: var(--secondary); text-decoration: none; padding: 10px 20px;">
+                    <span class="material-symbols-outlined"
+                      style="vertical-align: middle; margin-right: 5px;">download</span>
+                    Download MP4
+                  </a>
+                </div>
+              </div>
+              <button id="generateVideoBtn" class="btn-primary">
+                <span class="material-symbols-outlined">movie</span>
+                Generate Animated Video
+              </button>
+              <div id="videoLoading" class="loading-inline" style="display:none;">
+                <div class="spinner-sm"></div>
+                <span id="videoLoadingMsg">Rendering animation… (~30s)</span>
+              </div>
+              <p class="video-note">💡 STEM documents (Math/Physics) get a teal-themed formula-focused layout. General
+                subjects get a purple gradient slide deck.</p>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /workspace-content -->
+    </main>
+
+    <!-- ── Right Sidebar: AI Chat ── -->
+    <aside class="chat-sidebar" id="chatSidebar">
+      <div class="chat-header">
+        <div class="chat-title">
+          <span class="material-symbols-outlined" style="color:var(--accent-pink)">chat_bubble</span>
+          <span>AI Assistant</span>
+        </div>
+        <button class="icon-btn" id="clearChatBtn" title="Clear chat">
+          <span class="material-symbols-outlined">refresh</span>
+        </button>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg ai">
+          <div class="bubble">
+            Hello! Upload a PDF to get started. Once processed, you can ask me anything about your document and I'll
+            answer with context from the source.
+          </div>
+          <span class="msg-time">Just now</span>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-input-row">
+          <textarea id="chatInput" placeholder="Ask about your document…" rows="2"></textarea>
+          <button id="sendChatBtn" class="send-btn">
+            <span class="material-symbols-outlined">send</span>
+          </button>
+        </div>
+        <p class="input-hint">Press Enter to send · Shift+Enter for new line</p>
+      </div>
+    </aside>
+
+  </div><!-- /app-shell -->
+
+  <script src="/static/js/app.js"></script>
+</body>
+
+</html>
